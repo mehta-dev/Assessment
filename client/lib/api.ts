@@ -27,6 +27,7 @@ import type {
 import type { Task } from "@/types/task";
 
 const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
   "http://localhost:4000";
 
 const CURRENT_WORKSPACE_KEY =
