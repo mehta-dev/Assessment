@@ -32,6 +32,23 @@ interface AccessTokenPayload {
   username: string;
 }
 
+const isProduction =
+  process.env.NODE_ENV === 'production';
+
+const cookieOptions = {
+  httpOnly: true,
+
+  secure: isProduction,
+
+  sameSite: isProduction
+    ? ('none' as const)
+    : ('lax' as const),
+
+  maxAge: COOKIE_MAX_AGE,
+
+  path: '/',
+};
+
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -56,15 +73,7 @@ export class AuthController {
     response.cookie(
       ACCESS_TOKEN_COOKIE,
       result.accessToken,
-      {
-        httpOnly: true,
-        secure:
-          process.env.NODE_ENV ===
-          'production',
-        sameSite: 'lax',
-        maxAge: COOKIE_MAX_AGE,
-        path: '/',
-      },
+      cookieOptions,
     );
 
     return {
@@ -88,15 +97,7 @@ export class AuthController {
     response.cookie(
       ACCESS_TOKEN_COOKIE,
       result.accessToken,
-      {
-        httpOnly: true,
-        secure:
-          process.env.NODE_ENV ===
-          'production',
-        sameSite: 'lax',
-        maxAge: COOKIE_MAX_AGE,
-        path: '/',
-      },
+      cookieOptions,
     );
 
     return {
@@ -151,10 +152,10 @@ export class AuthController {
       ACCESS_TOKEN_COOKIE,
       {
         httpOnly: true,
-        secure:
-          process.env.NODE_ENV ===
-          'production',
-        sameSite: 'lax',
+        secure: isProduction,
+        sameSite: isProduction
+          ? ('none' as const)
+          : ('lax' as const),
         path: '/',
       },
     );
