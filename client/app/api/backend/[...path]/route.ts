@@ -1,30 +1,36 @@
-import { NextRequest, NextResponse } from "next/server";
+import {
+  NextRequest,
+  NextResponse,
+} from "next/server";
 
 const BACKEND_URL =
   process.env.API_SERVER_URL ||
   "http://localhost:4000";
 
+interface RouteContext {
+  params: Promise<{
+    path: string[];
+  }>;
+}
+
 async function proxyRequest(
   request: NextRequest,
-  context: {
-    params: Promise<{
-      path: string[];
-    }>;
-  }
+  context: RouteContext
 ) {
-  const { path } = await context.params;
+  const { path } =
+    await context.params;
 
   const targetUrl =
     `${BACKEND_URL}/${path.join("/")}` +
-    (request.nextUrl.search
-      ? request.nextUrl.search
-      : "");
+    (request.nextUrl.search ||
+      "");
 
-  const headers = new Headers();
+  const headers =
+    new Headers();
 
   /*
-   * Forward request headers needed by the
-   * NestJS API.
+   * Forward request headers required
+   * by the NestJS API.
    */
   const contentType =
     request.headers.get(
@@ -42,7 +48,10 @@ async function proxyRequest(
     request.headers.get("cookie");
 
   if (cookie) {
-    headers.set("cookie", cookie);
+    headers.set(
+      "cookie",
+      cookie
+    );
   }
 
   const authorization =
@@ -73,10 +82,14 @@ async function proxyRequest(
     request.headers.get("accept");
 
   if (accept) {
-    headers.set("accept", accept);
+    headers.set(
+      "accept",
+      accept
+    );
   }
 
-  const method = request.method;
+  const method =
+    request.method;
 
   let body:
     | string
@@ -89,20 +102,43 @@ async function proxyRequest(
     body = await request.text();
   }
 
-  const backendResponse =
-    await fetch(targetUrl, {
-      method,
-      headers,
-      body,
-      redirect: "manual",
-      cache: "no-store",
-    });
+  let backendResponse: Response;
+
+  try {
+    backendResponse =
+      await fetch(
+        targetUrl,
+        {
+          method,
+          headers,
+          body,
+          redirect: "manual",
+          cache: "no-store",
+        }
+      );
+  } catch (error) {
+    console.error(
+      "Backend proxy request failed:",
+      error
+    );
+
+    return NextResponse.json(
+      {
+        message:
+          "Unable to reach backend service.",
+      },
+      {
+        status: 502,
+      }
+    );
+  }
 
   const responseHeaders =
     new Headers();
 
   /*
-   * Forward the response content type.
+   * Forward the backend response
+   * content type.
    */
   const responseContentType =
     backendResponse.headers.get(
@@ -117,27 +153,72 @@ async function proxyRequest(
   }
 
   /*
-   * Forward Set-Cookie from NestJS.
+   * Forward every Set-Cookie header
+   * separately.
    *
-   * The cookie must belong to the
-   * Vercel domain, not the Render domain.
+   * The browser should store the cookie
+   * for the Vercel origin, so remove any
+   * Domain attribute that the backend
+   * might send.
    */
-  const setCookie =
-    backendResponse.headers.get(
-      "set-cookie"
-    );
+  const setCookieHeaders =
+    typeof (
+      backendResponse.headers as Headers & {
+        getSetCookie?: () => string[];
+      }
+    ).getSetCookie === "function"
+      ? (
+          backendResponse.headers as Headers & {
+            getSetCookie: () => string[];
+          }
+        ).getSetCookie()
+      : [];
 
-  if (setCookie) {
-    responseHeaders.append(
-      "set-cookie",
-      setCookie
-        .replace(
+  if (
+    setCookieHeaders.length > 0
+  ) {
+    for (const cookieHeader of
+      setCookieHeaders) {
+      const rewrittenCookie =
+        cookieHeader.replace(
           /;\s*Domain=[^;]+/gi,
           ""
-        )
-    );
+        );
+
+      responseHeaders.append(
+        "set-cookie",
+        rewrittenCookie
+      );
+    }
+  } else {
+    /*
+     * Fallback for environments where
+     * getSetCookie() is unavailable.
+     */
+    const setCookie =
+      backendResponse.headers.get(
+        "set-cookie"
+      );
+
+    if (setCookie) {
+      const rewrittenCookie =
+        setCookie.replace(
+          /;\s*Domain=[^;]+/gi,
+          ""
+        );
+
+      responseHeaders.append(
+        "set-cookie",
+        rewrittenCookie
+      );
+    }
   }
 
+  /*
+   * Read the backend response body
+   * and return it through the Vercel
+   * origin.
+   */
   const responseBody =
     await backendResponse.text();
 
@@ -146,8 +227,10 @@ async function proxyRequest(
     {
       status:
         backendResponse.status,
+
       statusText:
         backendResponse.statusText,
+
       headers:
         responseHeaders,
     }
@@ -156,11 +239,7 @@ async function proxyRequest(
 
 export async function GET(
   request: NextRequest,
-  context: {
-    params: Promise<{
-      path: string[];
-    }>;
-  }
+  context: RouteContext
 ) {
   return proxyRequest(
     request,
@@ -170,11 +249,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  context: {
-    params: Promise<{
-      path: string[];
-    }>;
-  }
+  context: RouteContext
 ) {
   return proxyRequest(
     request,
@@ -184,11 +259,7 @@ export async function POST(
 
 export async function PATCH(
   request: NextRequest,
-  context: {
-    params: Promise<{
-      path: string[];
-    }>;
-  }
+  context: RouteContext
 ) {
   return proxyRequest(
     request,
@@ -198,11 +269,7 @@ export async function PATCH(
 
 export async function PUT(
   request: NextRequest,
-  context: {
-    params: Promise<{
-      path: string[];
-    }>;
-  }
+  context: RouteContext
 ) {
   return proxyRequest(
     request,
@@ -212,11 +279,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  context: {
-    params: Promise<{
-      path: string[];
-    }>;
-  }
+  context: RouteContext
 ) {
   return proxyRequest(
     request,
@@ -226,11 +289,7 @@ export async function DELETE(
 
 export async function HEAD(
   request: NextRequest,
-  context: {
-    params: Promise<{
-      path: string[];
-    }>;
-  }
+  context: RouteContext
 ) {
   return proxyRequest(
     request,
