@@ -4,7 +4,12 @@ import { redirect } from "next/navigation";
 import ProfileForm from "@/components/ProfileForm";
 import BackButton from "@/components/BackButton";
 
-const API_URL = "http://localhost:4000";
+const API_URL =
+  process.env.API_SERVER_URL ||
+  "http://localhost:4000";
+
+const ACCESS_TOKEN_COOKIE =
+  "accessToken";
 
 export default async function ProfilePage() {
   const cookieStore =
@@ -12,7 +17,7 @@ export default async function ProfilePage() {
 
   const accessToken =
     cookieStore.get(
-      "accessToken"
+      ACCESS_TOKEN_COOKIE
     )?.value;
 
   if (!accessToken) {
@@ -28,17 +33,25 @@ export default async function ProfilePage() {
         {
           method: "GET",
           headers: {
-            Cookie: `accessToken=${accessToken}`,
+            Cookie:
+              `${ACCESS_TOKEN_COOKIE}=${accessToken}`,
           },
           cache: "no-store",
         }
       );
 
     if (!response.ok) {
+      console.error(
+        "Profile authentication check failed:",
+        response.status,
+        await response.text()
+      );
+
       redirect("/login");
     }
 
-    user = await response.json();
+    user =
+      await response.json();
   } catch (error) {
     console.error(
       "Failed to load authenticated user:",
@@ -69,7 +82,9 @@ export default async function ProfilePage() {
       </div>
 
       <div className="mx-auto max-w-3xl">
-        <ProfileForm user={user} />
+        <ProfileForm
+          user={user}
+        />
       </div>
     </div>
   );

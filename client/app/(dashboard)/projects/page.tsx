@@ -3,10 +3,14 @@ import { cookies } from "next/headers";
 import ProjectManager from "@/components/ProjectManager";
 
 const API_URL =
+  process.env.API_SERVER_URL ||
   "http://localhost:4000";
 
 const CURRENT_WORKSPACE_KEY =
   "pyramid-workspace-id";
+
+const ACCESS_TOKEN_COOKIE =
+  "accessToken";
 
 export default async function ProjectsPage() {
   const cookieStore =
@@ -14,7 +18,7 @@ export default async function ProjectsPage() {
 
   const accessToken =
     cookieStore.get(
-      "accessToken"
+      ACCESS_TOKEN_COOKIE
     )?.value;
 
   const savedWorkspaceId =
@@ -38,7 +42,8 @@ export default async function ProjectsPage() {
       {
         method: "GET",
         headers: {
-          Cookie: `accessToken=${accessToken}`,
+          Cookie:
+            `${ACCESS_TOKEN_COOKIE}=${accessToken}`,
         },
         cache: "no-store",
       }
@@ -110,7 +115,8 @@ export default async function ProjectsPage() {
       {
         method: "GET",
         headers: {
-          Cookie: `accessToken=${accessToken}`,
+          Cookie:
+            `${ACCESS_TOKEN_COOKIE}=${accessToken}`,
           "X-Workspace-Id":
             workspaceId,
         },
