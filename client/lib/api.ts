@@ -197,13 +197,32 @@ export async function registerUser(
   return response.json();
 }
 
-export async function getCurrentUser(): Promise<User> {
+export async function getCurrentUser(
+  accessToken?: string
+): Promise<User> {
+  const headers: Record<
+    string,
+    string
+  > = {};
+
+  /*
+   * Server Components cannot automatically
+   * forward the browser's HTTP-only cookie.
+   * Accept an access token so server-side
+   * callers can forward it explicitly.
+   */
+  if (accessToken) {
+    headers.Cookie =
+      `accessToken=${accessToken}`;
+  }
+
   const response = await fetch(
     `${API_URL}/auth/me`,
     {
       method: "GET",
       credentials: "include",
       cache: "no-store",
+      headers,
     }
   );
 
