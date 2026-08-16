@@ -26,9 +26,18 @@ import type {
 
 import type { Task } from "@/types/task";
 
+/*
+ * Browser:
+ *   /api/backend
+ *
+ * Server Components / server-side code:
+ *   API_SERVER_URL or localhost fallback
+ */
 const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  "http://localhost:4000";
+  typeof window !== "undefined"
+    ? "/api/backend"
+    : process.env.API_SERVER_URL ||
+      "http://localhost:4000";
 
 const CURRENT_WORKSPACE_KEY =
   "pyramid-workspace-id";
@@ -290,12 +299,12 @@ export async function getMyWorkspaces(
   > = {};
 
   /*
-   * Browser calls use the existing
-   * credentials automatically.
+   * Browser calls use the same-origin
+   * proxy and its HTTP-only cookie.
    *
    * Server Components can pass the
    * access token explicitly so the
-   * HTTP-only cookie reaches the API.
+   * backend receives authentication.
    */
   if (accessToken) {
     headers.Cookie =
@@ -494,8 +503,9 @@ export async function getTasks(
   };
 
   /*
-   * Server Components cannot automatically
-   * forward the browser's HTTP-only cookie.
+   * Server Components cannot
+   * automatically forward the
+   * browser HTTP-only cookie.
    */
   if (accessToken) {
     headers.Cookie =
