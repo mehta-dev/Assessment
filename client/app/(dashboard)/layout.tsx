@@ -2,7 +2,12 @@ import Sidebar from "@/components/Sidebar";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-const API_URL = "http://localhost:4000";
+const API_URL =
+  process.env.API_SERVER_URL ||
+  "http://localhost:4000";
+
+const ACCESS_TOKEN_COOKIE =
+  "accessToken";
 
 export default async function DashboardLayout({
   children,
@@ -14,7 +19,7 @@ export default async function DashboardLayout({
 
   const accessToken =
     cookieStore.get(
-      "accessToken"
+      ACCESS_TOKEN_COOKIE
     )?.value;
 
   /*
@@ -26,7 +31,14 @@ export default async function DashboardLayout({
   }
 
   /*
-   * Verify the cookie with the backend.
+   * Verify the authentication cookie
+   * directly with the backend.
+   *
+   * In production API_SERVER_URL points
+   * to the Render backend.
+   *
+   * In local development it falls back
+   * to localhost:4000.
    */
   try {
     const response =
@@ -34,14 +46,23 @@ export default async function DashboardLayout({
         `${API_URL}/auth/me`,
         {
           method: "GET",
+
           headers: {
-            Cookie: `accessToken=${accessToken}`,
+            Cookie:
+              `${ACCESS_TOKEN_COOKIE}=${accessToken}`,
           },
+
           cache: "no-store",
         }
       );
 
     if (!response.ok) {
+      console.error(
+        "Dashboard authentication check failed:",
+        response.status,
+        await response.text()
+      );
+
       redirect("/login");
     }
   } catch (error) {
